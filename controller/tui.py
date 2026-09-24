@@ -20,6 +20,7 @@ def _fmt_result(res: calc.FlightResult) -> list[tuple[str, str]]:
         ("Двигатель", res.selected_engine),
         ("Расстояние", formatting.format_distance(res.distance)),
         ("Кораблей", str(res.ships)),
+        ("Ходок", str(res.trips)),
         ("Время в пути", formatting.format_duration(res.flight_time)),
         ("Топливо", formatting.format_tonnes(res.fuel_amount)),
         ("Расход", f"{formatting.format_tonnes(res.fuel_consumption)}/ч на корабль"),
@@ -106,10 +107,10 @@ class ResultScreen(Screen):
                     for key, value in _fmt_result(self.result):
                         with Horizontal(classes="result-row"):
                             yield Label(key, classes="result-key")
-                            yield Label(value, classes="result-value", id=f"res-{key}")
+                            yield Label(value, classes="result-value")
                 yield Label(
                     "Формат: выбран один двигатель по дальности; топливо и цена "
-                    "умножены на число кораблей, время — как у одного.",
+                    "умножены на число ходок, время — флот летит пачкой.",
                     id="result-note",
                 )
         yield Button("← К вводу", id="back", variant="primary")

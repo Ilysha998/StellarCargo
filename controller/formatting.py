@@ -61,8 +61,11 @@ def format_distance(ly: float) -> str:
         num = f"{ly:,.0f}".replace(",", " ")
     elif ly >= 1:
         num = f"{ly:.2f}".rstrip("0").rstrip(".")
+    elif ly > 0:
+        # межпланетные дистанции: фиксированный формат вместо 2.47e-06
+        num = f"{ly:.8f}".rstrip("0").rstrip(".") or "0"
     else:
-        num = f"{ly:.4f}".rstrip("0").rstrip(".") or "0"
+        num = "0"
     if abs(ly - round(ly)) < 1e-9:
         unit = plural_ru(int(round(ly)), ("св. год", "св. года", "св. лет"))
     else:

@@ -1,6 +1,6 @@
 import pytest
 
-from core import FleetTooLargeError, PlanetNotFoundError, StellarCargoError
+from core import PlanetNotFoundError, StellarCargoError
 from controller import calc, db, geometry
 
 
@@ -36,9 +36,13 @@ def test_ships_needed_by_mass_and_volume():
     assert calc.ships_needed(10, 3500, weight_limit=100, ship_volume=1000) == 4
 
 
-def test_ships_needed_overflow():
-    with pytest.raises(FleetTooLargeError):
-        calc.ships_needed(10_000, 10, weight_limit=100, ship_volume=1000, max_fleet=20)
+def test_fleet_plan_trips():
+    """Груз, который не влезает в один вылет, делится на ходки."""
+    assert calc.fleet_plan(3, max_fleet=20) == (3, 1)
+    assert calc.fleet_plan(20, max_fleet=20) == (20, 1)
+    assert calc.fleet_plan(21, max_fleet=20) == (20, 2)
+    assert calc.fleet_plan(45, max_fleet=20) == (20, 3)
+    assert calc.fleet_plan(0, max_fleet=20) == (1, 1)
 
 
 def test_main_validation(planets_db):

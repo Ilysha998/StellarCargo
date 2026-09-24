@@ -23,6 +23,7 @@ def test_format_distance():
     assert formatting.format_distance(2) == "2 св. года"
     assert formatting.format_distance(5) == "5 св. лет"
     assert formatting.format_distance(4.20) == "4.2 св. года"
+    assert formatting.format_distance(2.47e-6) == "0.00000247 св. года"
 
 
 def test_plural_ru():
@@ -53,8 +54,25 @@ def test_main_multiplies_fleet(planets_db, monkeypatch):
     monkeypatch.setattr(engine_hub, "load_engines", lambda *a, **k: [FakeRocket])
     res = calc.main("MW-SLR-EARTH", "MW-SLR-MARS", 10, 250)
     assert res.ships == 3
-    assert res.fuel_amount == pytest.approx(3 * FakeRocket().calculate(
+    assert res.trips == 1
+    assert res.fuel_amount == pytest.approx(3 * FakeRocket.calculate(
         res.distance, 250 / 3, 10 / 3, 1.0).fuel_amount)
     # время НЕ умножается
-    single = FakeRocket().calculate(res.distance, 250 / 3, 10 / 3, 1.0)
+    single = FakeRocket.calculate(res.distance, 250 / 3, 10 / 3, 1.0)
     assert res.flight_time == single.flight_time
+
+
+def test_main_splits_over_fleet_into_trips(planets_db, monkeypatch):
+    """2000т при лимите 120т = 17 кораблей -> влезает (1 ходка);
+    6000т = 50 кораблей -> 20 кораблей x 3 ходки, груз делится на все 60 слотов."""
+    from tests.test_engine_helpers import FakeRocket
+
+    monkeypatch.setattr(engine_hub, "load_engines", lambda *a, **k: [FakeRocket])
+    res = calc.main("MW-SLR-EARTH", "MW-SLR-MARS", 10, 6000)
+    assert res.ships == 20
+    assert res.trips == 3
+    slots = res.ships * res.trips
+    per_slot = FakeRocket.calculate(res.distance, 6000 / slots, 10 / slots, 1.0)
+    assert res.fuel_amount == pytest.approx(per_slot.fuel_amount * slots)
+    assert res.flight_price == pytest.approx(per_slot.flight_price * slots)
+    assert res.flight_time == per_slot.flight_time  # пачкой — без умножения
