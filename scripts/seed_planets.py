@@ -70,8 +70,9 @@ def seed(db_path: Path | str | None = None) -> int:
     rng = random.Random(42)  # детерминированная вселенная
     rows: list[tuple] = []
 
-    # 1) Солнечная система — маска вручную, 1 а.е. = 0.00000475 св. года
-    AU_IN_LY = 4.75e-6
+    # 1) Солнечная система — маска вручную, 1 а.е. = 1.58125e-5 св. года
+    # (149 597 870.7 км / 9 460 730 472 580.8 км)
+    AU_IN_LY = 1.58125e-5
     system_center = (0.0, 0.0, 0.0)
     for name, title, gravity, au in SOLAR_SYSTEM:
         rows.append((
