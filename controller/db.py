@@ -45,11 +45,21 @@ class Planet:
     gravity: float
 
 
+def _fold(value: object) -> object:
+    """casefold() для SQL-функции fold(): регистронезависимость и для кириллицы.
+
+    Встроенные LIKE/COLLATE NOCASE в SQLite сводят регистр только к ASCII,
+    поэтому «зем» не находило «Земля» — а TUI ищет в любом регистре.
+    """
+    return value.casefold() if isinstance(value, str) else value
+
+
 def connect(db_path: Path | str | None = None) -> sqlite3.Connection:
     path = Path(db_path) if db_path else DB_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    conn.create_function("fold", 1, _fold, deterministic=True)
     conn.executescript(_SCHEMA)
     return conn
 
@@ -79,11 +89,11 @@ def get_planet(key: str, db_path: Path | str | None = None) -> Planet:
 
     with connect(db_path) as conn:
         row = conn.execute(
-            "SELECT * FROM planets WHERE id = ? COLLATE NOCASE", (key,)
+            "SELECT * FROM planets WHERE fold(id) = fold(?)", (key,)
         ).fetchone()
         if row is None:
             rows = conn.execute(
-                "SELECT * FROM planets WHERE display_name = ? COLLATE NOCASE",
+                "SELECT * FROM planets WHERE fold(display_name) = fold(?)",
                 (key,),
             ).fetchall()
             if len(rows) > 1:
@@ -107,19 +117,18 @@ def search_planets(
     query = (query or "").strip()
     if not query:
         return []
-    like = f"%{query}%"
     with connect(db_path) as conn:
         rows = conn.execute(
             """
             SELECT * FROM planets
-             WHERE id           LIKE ? COLLATE NOCASE
-                OR display_name LIKE ? COLLATE NOCASE
-                OR galaxy       LIKE ? COLLATE NOCASE
-                OR system       LIKE ? COLLATE NOCASE
-                OR name         LIKE ? COLLATE NOCASE
+             WHERE instr(fold(id),           fold(?)) > 0
+                OR instr(fold(display_name), fold(?)) > 0
+                OR instr(fold(galaxy),       fold(?)) > 0
+                OR instr(fold(system),       fold(?)) > 0
+                OR instr(fold(name),         fold(?)) > 0
              ORDER BY LENGTH(id), id
              LIMIT ?
             """,
-            (like, like, like, like, like, limit),
+            (query, query, query, query, query, limit),
         ).fetchall()
     return [_row_to_planet(r) for r in rows]
