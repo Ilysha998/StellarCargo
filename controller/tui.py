@@ -5,13 +5,27 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, ListView, ListItem, Static
+from textual_image.widget import Image
 
 from core import StellarCargoError
 from . import calc, db, geometry, formatting
+
+LOGO_PATH = Path(__file__).resolve().parent.parent / "images" / "Cybersun_logo.png"
+
+
+class BrandHeader(Horizontal):
+    """Шапка компании: логотип Cybersun + название Cybersun Logistics."""
+
+    def compose(self) -> ComposeResult:
+        if LOGO_PATH.exists():
+            yield Image(LOGO_PATH, id="brand-logo")
+        yield Label("Cybersun Logistics", id="brand-title")
 
 
 def _fmt_result(res: calc.FlightResult) -> list[tuple[str, str]]:
@@ -96,6 +110,7 @@ class ResultScreen(Screen):
         self.error = error
 
     def compose(self) -> ComposeResult:
+        yield BrandHeader(id="brand")
         yield Header()
         with VerticalScroll(id="result-scroll"):
             if self.error:
@@ -130,6 +145,7 @@ class InputScreen(Screen):
         self.dest: db.Planet | None = None
 
     def compose(self) -> ComposeResult:
+        yield BrandHeader(id="brand")
         yield Header()
         with VerticalScroll(id="input-scroll"):
             with Horizontal(id="input-columns"):
@@ -251,6 +267,9 @@ class InputScreen(Screen):
 class StellarCargoApp(App):
     TITLE = "StellarCargo"
     CSS = """
+    #brand { height: auto; background: $panel; padding: 0 1; }
+    #brand-logo { width: 14; height: auto; margin: 0 1; }
+    #brand-title { text-style: bold; color: $accent; content-align: left middle; }
     #input-columns { height: auto; }
     #left-column { width: 50%; padding: 0 1; }
     #right-column { width: 50%; padding: 0 1; }
