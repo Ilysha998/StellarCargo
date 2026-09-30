@@ -22,6 +22,13 @@ def test_search_planets(planets_db):
     assert db.search_planets("") == []
 
 
+def test_search_and_get_case_insensitive_cyrillic(planets_db):
+    """TUI ищет в любом регистре: встроенный NOCASE в SQLite не сводит кириллицу."""
+    assert any(p.id == "MW-SLR-EARTH" for p in db.search_planets("зем"))
+    assert any(p.id == "MW-SLR-EARTH" for p in db.search_planets("ЗЕМЛ"))
+    assert db.get_planet("земля").id == "MW-SLR-EARTH"
+
+
 def test_distance_sol_zero_and_positive(planets_db):
     earth = db.get_planet("MW-SLR-EARTH")
     mars = db.get_planet("MW-SLR-MARS")
