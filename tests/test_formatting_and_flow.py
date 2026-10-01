@@ -57,7 +57,7 @@ def test_main_multiplies_fleet(planets_db, monkeypatch):
     assert res.trips == 1
     assert res.fuel_amount == pytest.approx(3 * FakeRocket.calculate(
         res.distance, 250 / 3, 10 / 3, 1.0).fuel_amount)
-    # время НЕ умножается
+    # trips = 1 — интервалов между волнами нет, время базовое
     single = FakeRocket.calculate(res.distance, 250 / 3, 10 / 3, 1.0)
     assert res.flight_time == single.flight_time
 
@@ -75,4 +75,33 @@ def test_main_splits_over_fleet_into_trips(planets_db, monkeypatch):
     per_slot = FakeRocket.calculate(res.distance, 6000 / slots, 10 / slots, 1.0)
     assert res.fuel_amount == pytest.approx(per_slot.fuel_amount * slots)
     assert res.flight_price == pytest.approx(per_slot.flight_price * slots)
-    assert res.flight_time == per_slot.flight_time  # пачкой — без умножения
+    # волны: вылет одной через погрузку предыдущей, в полёте параллельно —
+    # время = база + (ходки - 1) × LOADING_S
+    expected = per_slot.flight_time + (res.trips - 1) * FakeRocket.LOADING_S
+    assert res.flight_time == pytest.approx(expected)
+
+
+def test_wave_lag_absent_when_engine_hides_loading(planets_db, monkeypatch):
+    """Движок без атрибута LOADING_S: интервала волн нет, время базовое."""
+    from tests.test_engine_helpers import FakeHyper
+
+    monkeypatch.setattr(engine_hub, "load_engines", lambda *a, **k: [FakeHyper])
+    # 21 000т / 500т = 42 корабля -> 20 x 3 ходки, но LOADING_S у FakeHyper нет
+    res = calc.main("MW-SLR-EARTH", "MW-SLR-MARS", 10, 21_000)
+    assert res.trips == 3
+    slots = res.ships * res.trips
+    per_slot = FakeHyper.calculate(res.distance, 21_000 / slots, 10 / slots, 1.0)
+    assert res.flight_time == per_slot.flight_time
+
+
+def test_wave_lag_with_real_engine(planets_db):
+    """Реальный движок: LOADING_S реально прибавляется (skip на ветках без движков)."""
+    rocket = pytest.importorskip("engines.rocket")
+
+    # 500т / 20т = 25 кораблей -> 20 x 2 ходки, груз по 12.5т на слот
+    res = calc.main("MW-SLR-EARTH", "MW-SLR-MARS", 10, 500)
+    assert res.ships == 20
+    assert res.trips == 2
+    slots = res.ships * res.trips
+    base = rocket.calculate(res.distance, 500 / slots, 10 / slots, 1.0).flight_time
+    assert res.flight_time == pytest.approx(base + rocket.LOADING_S)

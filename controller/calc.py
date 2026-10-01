@@ -27,7 +27,7 @@ class FlightResult:
     fuel_consumption: float  # т/ч на корабль
     fuel_amount: float     # т суммарно по всем ходкам (пуск + крейсер)
     flight_price: float    # ₽ суммарно по всем ходкам
-    flight_time: float     # с (флот летит пачкой — на ходки НЕ умножается)
+    flight_time: float     # с (волны уходят с интервалом погрузки, в полёте параллельно)
     ships: int             # кораблей в одном вылете
     trips: int             # ходок (вылетов) по ships кораблей
     distance: float        # св. лет
@@ -72,8 +72,9 @@ def main(
     Вход: две планеты (id или название), объём и масса груза (на весь груз).
     Движок выбирается контроллером только по дальности маршрута.
     Если груз не влезает в один вылет (MAX_FLEET кораблей) — считаются
-    ходки: топливо и цена ×число ходок, время НЕ умножается (флот
-    летит пачкой).
+    ходки: топливо и цена ×число ходок; волны вылетают одна за другой
+    с интервалом погрузки (LOADING_S движка), в полёте летят параллельно,
+    поэтому время = базовое время движка + (ходки − 1) × погрузка.
     """
     origin = db.get_planet(planet_from)
     destination = db.get_planet(planet_destination)
@@ -101,12 +102,18 @@ def main(
         engine, distance, mass_per_ship, volume_per_ship, origin.gravity
     )
 
+    # Волны: следующая вылетает после погрузки предыдущей (интервал —
+    # LOADING_S движка; если движок атрибут не публикует — интервала нет).
+    # В полёте волны параллельны, поэтому сам перелёт не удлиняется.
+    loading_s = float(getattr(engine, "LOADING_S", 0.0))
+    wave_lag_s = (trips - 1) * max(loading_s, 0.0)
+
     return FlightResult(
         selected_engine=engine.NAME,
         fuel_consumption=result.fuel_consumption,
         fuel_amount=result.fuel_amount * slots,   # топливо — все ходки
         flight_price=result.flight_price * slots, # цена — все ходки
-        flight_time=result.flight_time,           # летят пачкой: время одно
+        flight_time=result.flight_time + wave_lag_s,  # база + интервалы волн
         ships=ships,
         trips=trips,
         distance=distance,
