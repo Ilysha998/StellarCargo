@@ -27,7 +27,7 @@ class FlightResult:
     fuel_consumption: float  # т/ч на корабль
     fuel_amount: float     # т суммарно по всем ходкам (пуск + крейсер)
     flight_price: float    # ₽ суммарно по всем ходкам
-    flight_time: float     # с (волны уходят с интервалом погрузки, в полёте параллельно)
+    flight_time: float     # с (один перелёт × число ходок — флот летает по очереди)
     ships: int             # кораблей в одном вылете
     trips: int             # ходок (вылетов) по ships кораблей
     distance: float        # св. лет
@@ -71,10 +71,10 @@ def main(
 
     Вход: две планеты (id или название), объём и масса груза (на весь груз).
     Движок выбирается контроллером только по дальности маршрута.
-    Если груз не влезает в один вылет (MAX_FLEET кораблей) — считаются
-    ходки: топливо и цена ×число ходок; волны вылетают одна за другой
-    с интервалом погрузки (LOADING_S движка), в полёте летят параллельно,
-    поэтому время = базовое время движка + (ходки − 1) × погрузка.
+    Флот один и ограничен MAX_FLEET кораблями, поэтому груз, который не
+    влезает в один вылет, возят ходками ПОСЛЕДОВАТЕЛЬНО: корабли долетели,
+    разгрузились, вернулись — вылетает следующая партия. Топливо, цена
+    и время умножаются на число ходок (слоты = ships × trips).
     """
     origin = db.get_planet(planet_from)
     destination = db.get_planet(planet_destination)
@@ -102,18 +102,15 @@ def main(
         engine, distance, mass_per_ship, volume_per_ship, origin.gravity
     )
 
-    # Волны: следующая вылетает после погрузки предыдущей (интервал —
-    # LOADING_S движка; если движок атрибут не публикует — интервала нет).
-    # В полёте волны параллельны, поэтому сам перелёт не удлиняется.
-    loading_s = float(getattr(engine, "LOADING_S", 0.0))
-    wave_lag_s = (trips - 1) * max(loading_s, 0.0)
-
+    # Флот один: ходки идут по очереди (одни и те же корабли летают
+    # партиями), поэтому время = один перелёт × trips. Погрузка каждой
+    # партии уже внутри flight_time движка.
     return FlightResult(
         selected_engine=engine.NAME,
         fuel_consumption=result.fuel_consumption,
         fuel_amount=result.fuel_amount * slots,   # топливо — все ходки
         flight_price=result.flight_price * slots, # цена — все ходки
-        flight_time=result.flight_time + wave_lag_s,  # база + интервалы волн
+        flight_time=result.flight_time * trips,   # ходки последовательно
         ships=ships,
         trips=trips,
         distance=distance,

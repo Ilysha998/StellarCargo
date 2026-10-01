@@ -7,7 +7,7 @@ class FakeRocket:
     NAME = "Ракетный"
     MAX_RANGE = 100.0
     WEIGHT_LIMIT = 120.0
-    LOADING_S = 100.0  # интервал погрузки между волнами флота (секунды)
+    LOADING_S = 100.0  # погрузка перед вылетом, с — внутри flight_time движка
 
     @staticmethod
     def calculate(distance, cargo_mass, cargo_volume, gravity):
