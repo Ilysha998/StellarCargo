@@ -136,8 +136,8 @@ class ResultScreen(Screen):
                             yield Label(key, classes="result-key")
                             yield Label(value, classes="result-value")
                 yield Label(
-                    "Формат: выбран один двигатель по дальности; топливо и цена "
-                    "умножены на число ходок, время — флот летит пачкой.",
+                    "Формат: выбран один двигатель по дальности; топливо, цена "
+                    "и время умножены на число ходок — флот летает по очереди.",
                     id="result-note",
                 )
         yield Button("← К вводу", id="back", variant="primary")
