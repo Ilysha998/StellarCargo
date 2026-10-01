@@ -34,7 +34,7 @@ class BrandHeader(Horizontal):
         if LOGO_PATH.exists():
             yield Image(LOGO_PATH, id="brand-logo")
         with Vertical(id="brand-text"):
-            yield Static(BANNER, id="brand-banner", markup=False)
+            #yield Static(BANNER, id="brand-banner", markup=False)
             yield Label("Cybersun Logistics", id="brand-name")
         with Vertical(id="brand-app"):
             yield Label("StellarCargo", id="app-title")
