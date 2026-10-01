@@ -1,6 +1,4 @@
-"""Тесты импульсного тира: контракт, физика, гравитация (Тимур)."""
-
-import math
+"""Тесты импульсного тира: контракт, варп-физика, гравитация (Тимур)."""
 
 import pytest
 
@@ -25,11 +23,11 @@ def test_result_is_core_engine_result():
     r.validate("Импульсный")
 
 
-def test_fuel_independent_of_distance():
-    """Крейсер идёт по инерции: топливо зависит от массы, не от дистанции."""
+def test_fuel_increases_with_distance():
+    """Экзотика на коридор: топливо растёт с дистанцией."""
     near = impulse.calculate(600.0, 100.0, 4_000.0, 1.0)
     far = impulse.calculate(100_000.0, 100.0, 4_000.0, 1.0)
-    assert near.fuel_amount == pytest.approx(far.fuel_amount)
+    assert far.fuel_amount > near.fuel_amount
     assert far.flight_time > near.flight_time
     assert far.flight_price > near.flight_price
 
@@ -48,13 +46,19 @@ def test_heavier_cargo_costs_more():
     assert heavy.flight_price > light.flight_price
 
 
-def test_time_is_years_not_days():
-    """0.05c: 15 000 св. лет — сотни тысяч лет (кросс-чек по формуле)."""
+def test_time_is_warp_years():
+    """2000c: 15 000 св. лет — 7,5 лет (кросс-чек по формуле)."""
     r = impulse.calculate(15_000.0, 100.0, 4_000.0, 1.0)
-    ly_per_s = 0.05 * 299_792_458.0 / (impulse.LY_KM * 1000.0)
+    ly_per_s = impulse.WARP_SPEED_C * 299_792_458.0 / (impulse.LY_KM * 1000.0)
     cruise = 15_000.0 / ly_per_s
     assert r.flight_time > cruise
-    assert r.flight_time < cruise * 1.02 + impulse.LOADING_S
+    assert r.flight_time < cruise + impulse.LOADING_S + impulse.TAKEOFF_S_BASE + 1.0
+
+
+def test_max_range_within_100_years():
+    """Максимум тира (200 000 св. лет) — не более 100 лет."""
+    r = impulse.calculate(impulse.MAX_RANGE, 100.0, 4_000.0, 1.0)
+    assert r.flight_time <= 100.0 * impulse.SECONDS_PER_YEAR
 
 
 def test_range_helper():
@@ -81,4 +85,4 @@ def test_controller_picks_impulse_for_galaxy_route(monkeypatch, planets_db):
     assert res.selected_engine == "Импульсный"
     assert res.distance > 550.0
     assert res.flight_time > 0
-    assert not math.isnan(res.flight_price)
+    assert res.flight_time < 100.0 * 365 * 86_400  # в пределах 100 лет
